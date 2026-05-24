@@ -94,6 +94,8 @@ python main.py [选项]
 - `{email_key}_cpa.json`
 - `{email_key}_sub2api.json`
 
+程序默认不会清空整个 `output/` 目录，只会创建目录并覆盖同名账号文件。
+
 这些文件包含真实会话信息，默认不应提交到仓库。
 
 ## 调试产物
@@ -200,3 +202,7 @@ keytoauth/
 ruff check api_client.py browser_automation.py config.py main.py test_browser_automation_helpers.py test_runtime_helpers.py
 python -m unittest test_browser_automation_helpers.py test_runtime_helpers.py
 ```
+
+## 友情链接
+
+- [linux.do](https://linux.do)

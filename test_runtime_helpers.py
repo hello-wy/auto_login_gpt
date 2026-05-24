@@ -26,6 +26,22 @@ class RuntimeHelperTests(unittest.TestCase):
             self.assertTrue(output_path.exists())
             self.assertEqual(json.loads(output_path.read_text(encoding="utf-8")), {"ok": True})
 
+    def test_save_json_output_does_not_clear_existing_output_directory(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output_dir = Path(temp_dir) / "output"
+            output_dir.mkdir()
+            existing_file = output_dir / "keep_me.json"
+            existing_file.write_text('{"keep": true}', encoding="utf-8")
+
+            save_json_output(str(output_dir / "new_account.json"), {"ok": True}, "test output")
+
+            self.assertTrue(existing_file.exists())
+            self.assertEqual(json.loads(existing_file.read_text(encoding="utf-8")), {"keep": True})
+            self.assertEqual(
+                json.loads((output_dir / "new_account.json").read_text(encoding="utf-8")),
+                {"ok": True},
+            )
+
     @patch("api_client.requests.post")
     def test_fetch_email_credentials_skips_rows_missing_email_or_secret(self, mock_post):
         mock_post.return_value = make_response(
