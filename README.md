@@ -29,6 +29,14 @@ patchright install chrome
 - 推荐格式：`http://...`、`https://...`、`socks4://...`、`socks5://...`
 - 代理较慢时，可能需要调大 `config.py` 里的 `EMAIL_FORM_STABILIZE_SECONDS` 和 `EMAIL_POST_SUBMIT_TIMEOUT_SECONDS`
 - 邮件接口请求超时由 `MAIL_API_TIMEOUT` 控制
+- 如果 key 取件服务器不是默认地址，可以用 `--mail-server-base-url` 覆盖
+- `--mail-server-base-url` 只影响 `mail-keys` / `mail-code` 两个接口，不影响浏览器代理或 FlareSolverr
+
+6. 如果要启用 CPA 存活邮箱过滤（可选）
+
+- 需要一个可访问的 [CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI) 管理接口
+- 需要能访问 `/v0/management/auth-files` 的 Bearer Token
+- 程序会先取回 CPA 里仍可用的邮箱，再和 key 接口返回的邮箱比对，跳过已存在且仍存活的账号
 
 ## 使用方法
 
@@ -46,10 +54,43 @@ python main.py --key "AAAA-BBBB-CCCC"
 python main.py --input keys.txt
 ```
 
+### 覆盖 key 取件服务器地址
+
+```bash
+python main.py --input keys.txt --mail-server-base-url "https://plus.keria.cc.cd"
+```
+
+也支持直接传到 `/api/pickup`：
+
+```bash
+python main.py --input keys.txt --mail-server-base-url "https://plus.keria.cc.cd/api/pickup"
+```
+
+也可以通过环境变量提供：
+
+```bash
+set MAIL_SERVER_BASE_URL=https://plus.keria.cc.cd
+python main.py --input keys.txt
+```
+
 ### 使用浏览器代理
 
 ```bash
 python main.py --input keys.txt --proxy "socks5://127.0.0.1:1080"
+```
+
+### 跳过 CPA 已存活邮箱
+
+```bash
+python main.py --input keys.txt --skip-active-cpa-emails --cpa-management-url "http://127.0.0.1:8317" --cpa-management-key "<MANAGEMENT_TOKEN>"
+```
+
+也可以通过环境变量提供：
+
+```bash
+set CPA_MANAGEMENT_URL=http://127.0.0.1:8317
+set CPA_MANAGEMENT_KEY=<MANAGEMENT_TOKEN>
+python main.py --input keys.txt --skip-active-cpa-emails
 ```
 
 ### 常用参数
@@ -64,6 +105,10 @@ python main.py [选项]
   --headless
   --proxy PROXY
   --flaresolverr-url FLARESOLVERR_URL
+  --mail-server-base-url MAIL_SERVER_BASE_URL
+  --skip-active-cpa-emails
+  --cpa-management-url CPA_MANAGEMENT_URL
+  --cpa-management-key CPA_MANAGEMENT_KEY
 ```
 
 ## 当前已验证流程
@@ -97,6 +142,24 @@ python main.py [选项]
 程序默认不会清空整个 `output/` 目录，只会创建目录并覆盖同名账号文件。
 
 这些文件包含真实会话信息，默认不应提交到仓库。
+
+## CPA 过滤规则
+
+启用 `--skip-active-cpa-emails` 后，程序会请求 `CLIProxyAPI` 的管理接口 `/v0/management/auth-files`，读取其中的邮箱，并按下面规则认定为“仍存活”：
+
+- 有有效 `email`
+- `unavailable` 不为 `true`
+- `status` 不属于 `error`、`expired`、`invalid`、`revoked`、`unavailable`
+
+`disabled` 状态不会被额外处理。
+
+## 环境变量
+
+如果不想在命令行里重复输入，可以使用下面几个环境变量：
+
+- `MAIL_SERVER_BASE_URL`
+- `CPA_MANAGEMENT_URL`
+- `CPA_MANAGEMENT_KEY`
 
 ## 调试产物
 
@@ -193,7 +256,8 @@ keytoauth/
 ├── README.md
 ├── requirements.txt
 ├── session_converter.py
-└── test_browser_automation_helpers.py
+├── test_browser_automation_helpers.py
+└── test_runtime_helpers.py
 ```
 
 ## 验证命令

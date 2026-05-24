@@ -6,6 +6,7 @@ CHATGPT_SESSION_API = "https://chatgpt.com/api/auth/session"
 
 # API timeouts (seconds)
 MAIL_API_TIMEOUT = 30
+CPA_MANAGEMENT_TIMEOUT = 30
 
 # Timeouts (milliseconds)
 PAGE_LOAD_TIMEOUT = 30000

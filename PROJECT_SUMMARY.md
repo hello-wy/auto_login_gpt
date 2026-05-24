@@ -41,10 +41,38 @@
 - `FLARESOLVERR_MAX_TIMEOUT`
 - `FLARESOLVERR_WAIT_SECONDS`
 - `MAIL_API_TIMEOUT`
+- `MAIL_SERVER_BASE_URL`（CLI / env override）
 - `EMAIL_FORM_STABILIZE_SECONDS`
 - `EMAIL_POST_SUBMIT_TIMEOUT_SECONDS`
+- `CPA_MANAGEMENT_TIMEOUT`
 
 其中后两项是当前代理场景最关键的调参点。
+
+## 可选 CPA 过滤
+
+当前支持一个可选前置过滤：
+
+- 从 `CLIProxyAPI` 管理接口 `/v0/management/auth-files` 拉取账号列表
+- 读取其中的 `email`
+- 将 key 接口返回的邮箱与 CPA 中仍存活的邮箱比较
+- 跳过已存在且仍存活的邮箱，再进入浏览器登录流程
+
+当前“仍存活”的判定：
+
+- `email` 非空
+- `unavailable != true`
+- `status` 不在 `error / expired / invalid / revoked / unavailable`
+
+`disabled` 不参与过滤判定。
+
+## 可选取件服务覆盖
+
+当前支持一个可选前置覆盖：
+
+- 用 `--mail-server-base-url` 或 `MAIL_SERVER_BASE_URL` 指向新的取件服务
+- 支持传站点根地址，也支持直接传到 `/api/pickup`
+- 程序会自动派生 `mail-keys` 和 `mail-code` 两个 endpoint
+- 这个覆盖只作用于 key / 验证码取件接口，不影响浏览器代理和 FlareSolverr
 
 ## 清理策略
 

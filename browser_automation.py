@@ -489,6 +489,7 @@ def login_chatgpt(
     secret: str = None,
     proxy: str = None,
     flaresolverr_url: str = FLARESOLVERR_URL,
+    mail_code_api: str = None,
 ) -> Dict:
     """
     Automate ChatGPT login and extract session.
@@ -501,6 +502,7 @@ def login_chatgpt(
         secret: Secret for fetching new code
         proxy: Browser proxy server (e.g., socks5://127.0.0.1:1080)
         flaresolverr_url: FlareSolverr API endpoint
+        mail_code_api: Optional override for the mail-code API endpoint
 
     Returns:
         Session JSON dict
@@ -629,11 +631,23 @@ def login_chatgpt(
                 raise Exception(f"Missing mail secret for verification code fetch: {email}")
             print("  → Fetching fresh verification code...")
             from api_client import fetch_verification_code
-            verification_code = fetch_verification_code(email, secret, max_retries=3)
+            verification_code = fetch_verification_code(
+                email,
+                secret,
+                max_retries=3,
+                mail_code_api=mail_code_api,
+            )
             print(f"  ✓ Got fresh code: {verification_code}")
 
             # Login with retry logic (user's "重复2" requirement)
-            session = login_with_retry(page, code_input, verification_code, email, secret)
+            session = login_with_retry(
+                page,
+                code_input,
+                verification_code,
+                email,
+                secret,
+                mail_code_api=mail_code_api,
+            )
 
             print("  ✓ Login successful!")
             return session
@@ -645,7 +659,14 @@ def login_chatgpt(
             context.close()
 
 
-def login_with_retry(page, code_input_selector: str, verification_code: str, email: str, secret: str) -> Dict:
+def login_with_retry(
+    page,
+    code_input_selector: str,
+    verification_code: str,
+    email: str,
+    secret: str,
+    mail_code_api: str = None,
+) -> Dict:
     """
     Attempt login with retry logic.
     Important: Need to wait 3 seconds for code input page to load, then refresh to get new code and re-enter.
@@ -672,7 +693,12 @@ def login_with_retry(page, code_input_selector: str, verification_code: str, ema
                 # Now fetch fresh verification code (this triggers a new email)
                 print("  → Fetching fresh verification code...")
                 from api_client import fetch_verification_code
-                verification_code = fetch_verification_code(email, secret, max_retries=2)
+                verification_code = fetch_verification_code(
+                    email,
+                    secret,
+                    max_retries=2,
+                    mail_code_api=mail_code_api,
+                )
                 print(f"  ✓ Got new code: {verification_code}")
 
                 if page.is_closed():
