@@ -675,13 +675,17 @@ def login_with_retry(page, code_input_selector: str, verification_code: str, ema
                 verification_code = fetch_verification_code(email, secret, max_retries=2)
                 print(f"  ✓ Got new code: {verification_code}")
 
-                # Refresh the page to get a fresh code input
-                print("  → Refreshing page...")
-                page.reload(wait_until="domcontentloaded")
-                time.sleep(3)  # Wait for page to reload
+                if page.is_closed():
+                    raise Exception("Verification page was closed before retrying the code submission")
+
+                print("  → Re-checking verification page...")
                 refreshed_code_input = wait_for_first_visible_selector(page, CODE_INPUT_SELECTORS, timeout_ms=CODE_INPUT_TIMEOUT)
                 if not refreshed_code_input:
-                    raise Exception("Could not find verification code input after refreshing the page")
+                    snapshot = get_login_flow_snapshot(page)
+                    raise Exception(
+                        "Could not find verification code input for retry "
+                        f"(state={snapshot['state']} @ {snapshot['url']})"
+                    )
                 code_input_selector = refreshed_code_input
 
             snapshot = assert_login_flow_state(page, {"one_time_code"}, "verification code entry")
