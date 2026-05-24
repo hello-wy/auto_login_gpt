@@ -1,0 +1,66 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Output files
+output/
+output_test/
+logs/
+artifacts/
+
+# Browser profiles
+browser_profile/
+browser_profile_test/
+browser_profile_probe*/
+
+# Screenshots
+error_*.png
+screenshot_*.png
+*_probe.png
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Local inputs / debug artifacts
+keys.txt
+debug_*.py
+.ace-tool/
+.playwright-mcp/
+.ruff_cache/
+*.bundle.js
+
+# Keep committed helper test and sample input
+!test_browser_automation_helpers.py
+!keys.example.txt
