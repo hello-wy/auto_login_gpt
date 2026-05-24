@@ -1,6 +1,6 @@
-# ChatGPT Key to Auth Converter
+# ChatGPT Email to Auth Converter
 
-将 `key code` 批量转换为 ChatGPT Web 会话 JSON，输出 `CPA` 和 `Sub2API` 两种格式。
+将邮箱列表批量转换为 ChatGPT Web 会话 JSON，默认输出 `Sub2API` 格式。验证码通过 CloudMail 自动接收。
 
 ## 前置条件
 
@@ -23,29 +23,48 @@ patchright install chrome
 
 默认地址为 `http://127.0.0.1:8191/v1`。程序会在使用浏览器代理时调用它预解 Cloudflare。
 
-5. 如果使用代理
+5. 配置 CloudMail
+
+复制 `cloudmail.config.example.json` 为 `cloudmail.config.json`，填写管理员密码：
+
+```json
+{
+  "api_base_url": "https://edu.arrangework.dpdns.org",
+  "admin_email": "admin@edu.arrangework.dpdns.org",
+  "admin_password": "<CLOUDMAIL_ADMIN_PASSWORD>",
+  "domain": "edu.arrangework.dpdns.org"
+}
+```
+
+程序会调用 CloudMail 的 `/api/public/genToken` 和 `/api/public/emailList` 自动接码。
+
+6. 如果使用代理
 
 - 代理只作用于浏览器和 FlareSolverr 链路，不作用于邮件接口请求
 - 推荐格式：`http://...`、`https://...`、`socks4://...`、`socks5://...`
 - 代理较慢时，可能需要调大 `config.py` 里的 `EMAIL_FORM_STABILIZE_SECONDS` 和 `EMAIL_POST_SUBMIT_TIMEOUT_SECONDS`
-- 邮件接口请求超时由 `MAIL_API_TIMEOUT` 控制
-- 如果 key 取件服务器不是默认地址，可以用 `--mail-server-base-url` 覆盖
-- `--mail-server-base-url` 只影响 `mail-keys` / `mail-code` 两个接口，不影响浏览器代理或 FlareSolverr
+- CloudMail 接口请求超时由 `CLOUDMAIL_API_TIMEOUT` 控制
 
-6. 如果要启用 CPA 存活邮箱过滤（可选）
+7. 如果要启用 CPA 存活邮箱过滤（可选）
 
 - 需要一个可访问的 [CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI) 管理接口
 - 需要能访问 `/v0/management/auth-files` 的 Bearer Token
-- 程序会先取回 CPA 里仍可用的邮箱，再和 key 接口返回的邮箱比对，跳过已存在且仍存活的账号
+- 程序会先取回 CPA 里仍可用的邮箱，再和输入邮箱比对，跳过已存在且仍存活的账号
 
 ## 使用方法
 
-准备你自己的输入文件，例如 `keys.txt`。仓库只保留脱敏样例 `keys.example.txt`。
+准备你自己的输入文件，例如 `keys.txt`。格式必须是邮箱，一行一个：
 
-### 单个 key
+```txt
+s45n0sg8rv@edu.arrangework.dpdns.org
+2enho3s56x@edu.arrangework.dpdns.org
+7hmwt3xo21@edu.arrangework.dpdns.org
+```
+
+### 单个邮箱
 
 ```bash
-python main.py --key "AAAA-BBBB-CCCC"
+python main.py --email "s45n0sg8rv@edu.arrangework.dpdns.org"
 ```
 
 ### 批量处理
@@ -54,22 +73,16 @@ python main.py --key "AAAA-BBBB-CCCC"
 python main.py --input keys.txt
 ```
 
-### 覆盖 key 取件服务器地址
+### 指定 CloudMail 配置
 
 ```bash
-python main.py --input keys.txt --mail-server-base-url "https://plus.keria.cc.cd"
+python main.py --input keys.txt --cloudmail-config cloudmail.config.json
 ```
 
-也支持直接传到 `/api/pickup`：
+也可以通过环境变量指定：
 
 ```bash
-python main.py --input keys.txt --mail-server-base-url "https://plus.keria.cc.cd/api/pickup"
-```
-
-也可以通过环境变量提供：
-
-```bash
-set MAIL_SERVER_BASE_URL=https://plus.keria.cc.cd
+set CLOUDMAIL_CONFIG_PATH=cloudmail.config.json
 python main.py --input keys.txt
 ```
 
@@ -99,13 +112,13 @@ python main.py --input keys.txt --skip-active-cpa-emails
 python main.py [选项]
 
 选项:
-  --key KEY
+  --email EMAIL
   --input FILE
-  --format {cpa,sub2api,both}
+  --format {cpa,sub2api,both}  # 默认 sub2api
   --headless
   --proxy PROXY
   --flaresolverr-url FLARESOLVERR_URL
-  --mail-server-base-url MAIL_SERVER_BASE_URL
+  --cloudmail-config CLOUDMAIL_CONFIG
   --skip-active-cpa-emails
   --cpa-management-url CPA_MANAGEMENT_URL
   --cpa-management-key CPA_MANAGEMENT_KEY
@@ -120,7 +133,7 @@ python main.py [选项]
 2. `password`（可选）
    某些账号会先落到密码页；程序会自动点击“使用一次性验证码登录”
 3. `one_time_code`
-   获取最新验证码并提交
+   通过 CloudMail 获取最新验证码并提交
 4. `logged_in`
    提取 `https://chatgpt.com/api/auth/session`
 
@@ -134,10 +147,11 @@ python main.py [选项]
 
 ## 输出文件
 
-生成的文件位于 `./output/`：
+默认生成的文件位于 `./output/`：
 
-- `{email_key}_cpa.json`
 - `{email_key}_sub2api.json`
+
+只有显式传入 `--format cpa` 或 `--format both` 时才会生成 `{email_key}_cpa.json`。
 
 程序默认不会清空整个 `output/` 目录，只会创建目录并覆盖同名账号文件。
 
@@ -157,7 +171,7 @@ python main.py [选项]
 
 如果不想在命令行里重复输入，可以使用下面几个环境变量：
 
-- `MAIL_SERVER_BASE_URL`
+- `CLOUDMAIL_CONFIG_PATH`
 - `CPA_MANAGEMENT_URL`
 - `CPA_MANAGEMENT_KEY`
 
@@ -181,6 +195,7 @@ python main.py [选项]
 仓库默认忽略以下内容：
 
 - `keys.txt`
+- `cloudmail.config.json`
 - `output/`
 - `logs/`
 - `artifacts/`
@@ -190,7 +205,8 @@ python main.py [选项]
 
 如果需要分享仓库，请只保留代码、文档和脱敏样例，不要保留：
 
-- key 输入文件
+- 邮箱输入文件
+- CloudMail 本地配置
 - 导出的 session JSON
 - 浏览器 profile
 - 调试截图
@@ -250,6 +266,8 @@ python main.py [选项]
 keytoauth/
 ├── api_client.py
 ├── browser_automation.py
+├── cloudmail_client.py
+├── cloudmail.config.example.json
 ├── config.py
 ├── keys.example.txt
 ├── main.py
@@ -257,14 +275,14 @@ keytoauth/
 ├── requirements.txt
 ├── session_converter.py
 ├── test_browser_automation_helpers.py
+├── test_cloudmail_client.py
 └── test_runtime_helpers.py
 ```
 
 ## 验证命令
 
 ```bash
-ruff check api_client.py browser_automation.py config.py main.py test_browser_automation_helpers.py test_runtime_helpers.py
-python -m unittest test_browser_automation_helpers.py test_runtime_helpers.py
+python -m unittest test_browser_automation_helpers.py test_cloudmail_client.py test_runtime_helpers.py
 ```
 
 ## 友情链接

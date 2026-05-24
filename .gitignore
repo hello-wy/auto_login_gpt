@@ -55,6 +55,7 @@ Thumbs.db
 
 # Local inputs / debug artifacts
 keys.txt
+cloudmail.config.json
 debug_*.py
 .ace-tool/
 .playwright-mcp/
@@ -64,3 +65,4 @@ debug_*.py
 # Keep committed helper test and sample input
 !test_browser_automation_helpers.py
 !keys.example.txt
+!cloudmail.config.example.json

@@ -481,15 +481,20 @@ def submit_email_and_wait_for_code(page, email_input_selector: str, email: str) 
     )
 
 
+def get_fresh_verification_code(cloudmail_client, email: str, max_attempts: int) -> str:
+    if cloudmail_client is None:
+        raise ValueError("CloudMail client is required to fetch verification codes")
+    return cloudmail_client.fetch_verification_code(email, max_attempts=max_attempts)
+
+
 def login_chatgpt(
     email: str,
     verification_code: str,
     profile_dir: str,
     headless: bool = False,
-    secret: str = None,
+    cloudmail_client=None,
     proxy: str = None,
     flaresolverr_url: str = FLARESOLVERR_URL,
-    mail_code_api: str = None,
 ) -> Dict:
     """
     Automate ChatGPT login and extract session.
@@ -499,10 +504,9 @@ def login_chatgpt(
         verification_code: 6-digit verification code
         profile_dir: Browser profile directory
         headless: Run in headless mode
-        secret: Secret for fetching new code
+        cloudmail_client: CloudMail client for fetching fresh one-time codes
         proxy: Browser proxy server (e.g., socks5://127.0.0.1:1080)
         flaresolverr_url: FlareSolverr API endpoint
-        mail_code_api: Optional override for the mail-code API endpoint
 
     Returns:
         Session JSON dict
@@ -627,15 +631,11 @@ def login_chatgpt(
             time.sleep(5)
 
             # Now fetch the verification code (this will be the latest one)
-            if not secret:
-                raise Exception(f"Missing mail secret for verification code fetch: {email}")
             print("  → Fetching fresh verification code...")
-            from api_client import fetch_verification_code
-            verification_code = fetch_verification_code(
+            verification_code = get_fresh_verification_code(
+                cloudmail_client,
                 email,
-                secret,
-                max_retries=3,
-                mail_code_api=mail_code_api,
+                max_attempts=3,
             )
             print(f"  ✓ Got fresh code: {verification_code}")
 
@@ -645,8 +645,7 @@ def login_chatgpt(
                 code_input,
                 verification_code,
                 email,
-                secret,
-                mail_code_api=mail_code_api,
+                cloudmail_client,
             )
 
             print("  ✓ Login successful!")
@@ -664,8 +663,7 @@ def login_with_retry(
     code_input_selector: str,
     verification_code: str,
     email: str,
-    secret: str,
-    mail_code_api: str = None,
+    cloudmail_client,
 ) -> Dict:
     """
     Attempt login with retry logic.
@@ -676,7 +674,7 @@ def login_with_retry(
         code_input_selector: CSS selector for code input
         verification_code: 6-digit code
         email: Email address
-        secret: Secret for fetching new code
+        cloudmail_client: CloudMail client for fetching new codes
 
     Returns:
         Session JSON dict
@@ -692,12 +690,10 @@ def login_with_retry(
 
                 # Now fetch fresh verification code (this triggers a new email)
                 print("  → Fetching fresh verification code...")
-                from api_client import fetch_verification_code
-                verification_code = fetch_verification_code(
+                verification_code = get_fresh_verification_code(
+                    cloudmail_client,
                     email,
-                    secret,
-                    max_retries=2,
-                    mail_code_api=mail_code_api,
+                    max_attempts=2,
                 )
                 print(f"  ✓ Got new code: {verification_code}")
 

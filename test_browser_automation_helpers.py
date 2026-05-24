@@ -8,6 +8,7 @@ from browser_automation import (
     build_browser_proxy_settings,
     capture_debug_artifacts,
     format_artifact_summary,
+    get_fresh_verification_code,
     reset_browser_profile,
     solve_cloudflare_with_flaresolverr,
 )
@@ -77,6 +78,19 @@ class BrowserAutomationHelperTests(unittest.TestCase):
 
             self.assertTrue(profile_dir.exists())
             self.assertEqual(list(profile_dir.iterdir()), [])
+
+    def test_get_fresh_verification_code_uses_cloudmail_client(self):
+        client = MagicMock()
+        client.fetch_verification_code.return_value = "246810"
+
+        code = get_fresh_verification_code(client, "user@example.com", max_attempts=2)
+
+        self.assertEqual(code, "246810")
+        client.fetch_verification_code.assert_called_once_with("user@example.com", max_attempts=2)
+
+    def test_get_fresh_verification_code_requires_client(self):
+        with self.assertRaisesRegex(ValueError, "CloudMail client"):
+            get_fresh_verification_code(None, "user@example.com", max_attempts=2)
 
     @patch("browser_automation.time.strftime", return_value="20260524-123456")
     @patch("browser_automation.resolve_project_path")

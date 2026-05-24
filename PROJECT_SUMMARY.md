@@ -12,7 +12,7 @@
 - 代理 + 本地 FlareSolverr 协同
 - 页面状态检查与分支处理
 - ChatGPT session 提取
-- CPA / Sub2API 双格式导出
+- Sub2API 默认导出，CPA 可通过 `--format cpa` 或 `--format both` 显式启用
 
 ## 登录流程结论
 
@@ -108,7 +108,7 @@ python main.py --key "<YOUR_KEY>" --proxy "socks5://<HOST>:<PORT>"
 成功标志：
 
 - 日志出现 `Session extracted successfully`
-- `output/` 里生成 CPA / Sub2API 文件
+- `output/` 里默认生成 Sub2API 文件
 
 失败排查入口：
 
