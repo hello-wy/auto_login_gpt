@@ -73,6 +73,29 @@ python main.py --email "s45n0sg8rv@edu.arrangework.dpdns.org"
 python main.py --input keys.txt
 ```
 
+### 从 Sub2API error 账号生成输入
+
+```bash
+python main.py --input-source sub2api-errors --sub2api-error-output error_accounts.txt
+```
+
+程序会请求 Sub2API 管理账号接口，将 `status=error` 的账号邮箱写入 txt 文件，一行一个邮箱，然后用这个文件作为本次输入继续处理。
+
+如果接口需要管理 token：
+
+```bash
+set SUB2API_ADMIN_TOKEN=<ADMIN_TOKEN>
+python main.py --input-source sub2api-errors
+```
+
+也可以使用 Sub2API 管理账号登录获取 token：
+
+```bash
+set SUB2API_EMAIL=<SUB2API_EMAIL>
+set SUB2API_PASSWORD=<SUB2API_PASSWORD>
+python main.py --input-source sub2api-errors
+```
+
 ### 指定 CloudMail 配置
 
 ```bash
@@ -112,6 +135,7 @@ python main.py --input keys.txt --skip-active-cpa-emails
 python main.py [选项]
 
 选项:
+  --input-source {file,sub2api-errors}
   --email EMAIL
   --input FILE
   --format {cpa,sub2api,both}  # 默认 sub2api
@@ -122,6 +146,15 @@ python main.py [选项]
   --skip-active-cpa-emails
   --cpa-management-url CPA_MANAGEMENT_URL
   --cpa-management-key CPA_MANAGEMENT_KEY
+  --sub2api-url SUB2API_URL
+  --sub2api-email SUB2API_EMAIL
+  --sub2api-password SUB2API_PASSWORD
+  --sub2api-group SUB2API_GROUP
+  --sub2api-priority SUB2API_PRIORITY
+  --sub2api-accounts-url SUB2API_ACCOUNTS_URL
+  --sub2api-admin-token SUB2API_ADMIN_TOKEN
+  --sub2api-page-size SUB2API_PAGE_SIZE
+  --sub2api-error-output SUB2API_ERROR_OUTPUT
 ```
 
 ## 当前已验证流程
@@ -147,11 +180,16 @@ python main.py [选项]
 
 ## 输出文件
 
-默认生成的文件位于 `./output/`：
+默认 `--format sub2api` 不再保存本地 Sub2API JSON，而是登录 Sub2API 后调用
+`/api/v1/admin/accounts/import/codex-session` 导入会话。导入使用的默认配置：
 
-- `{email_key}_sub2api.json`
+- URL：`https://solidapi.top/`
+- 分组：`vip`
+- 优先级：`1`
 
-只有显式传入 `--format cpa` 或 `--format both` 时才会生成 `{email_key}_cpa.json`。
+需要通过参数或环境变量提供 Sub2API 管理账号和密码。
+
+只有显式传入 `--format cpa` 或 `--format both` 时才会在 `./output/` 生成 `{email_key}_cpa.json`。
 
 程序默认不会清空整个 `output/` 目录，只会创建目录并覆盖同名账号文件。
 
@@ -174,6 +212,55 @@ python main.py [选项]
 - `CLOUDMAIL_CONFIG_PATH`
 - `CPA_MANAGEMENT_URL`
 - `CPA_MANAGEMENT_KEY`
+- `SUB2API_URL`
+- `SUB2API_EMAIL`
+- `SUB2API_PASSWORD`
+- `SUB2API_GROUP`
+- `SUB2API_PRIORITY`
+- `SUB2API_ACCOUNTS_URL`
+- `SUB2API_ADMIN_TOKEN`
+
+CDK Plus Web 服务还支持：
+
+- `CDK_PLUS_ADMIN_PASSWORD`：管理后台密码
+- `CDK_PLUS_DB_PATH`：SQLite 数据库路径
+- `CDK_PLUS_CLOUDMAIL_CONFIG`：CloudMail 配置文件路径
+
+## Docker 部署
+
+容器默认启动 CDK Plus Web 服务，监听容器内 `8000` 端口。
+
+1. 准备配置文件：
+
+```bash
+cp .env.example .env
+cp cloudmail.config.example.json cloudmail.config.json
+```
+
+编辑 `.env` 里的 `CDK_PLUS_ADMIN_PASSWORD`，并在 `cloudmail.config.json` 里填写 CloudMail 管理密码。
+
+2. 构建并启动：
+
+```bash
+docker compose up -d --build
+```
+
+3. 访问：
+
+```text
+http://127.0.0.1:8000
+http://127.0.0.1:8000/admin
+```
+
+SQLite 数据库保存在 Docker named volume `keytoauth_cdk_plus_data` 中。CloudMail 配置通过只读挂载注入容器，不会写入镜像。
+
+常用命令：
+
+```bash
+docker compose logs -f
+docker compose restart
+docker compose down
+```
 
 ## 调试产物
 
@@ -195,6 +282,7 @@ python main.py [选项]
 仓库默认忽略以下内容：
 
 - `keys.txt`
+- `sub2api_error_accounts.txt`
 - `cloudmail.config.json`
 - `output/`
 - `logs/`
@@ -274,15 +362,18 @@ keytoauth/
 ├── README.md
 ├── requirements.txt
 ├── session_converter.py
+├── sub2api_client.py
+├── sub2api_importer.py
 ├── test_browser_automation_helpers.py
 ├── test_cloudmail_client.py
+├── test_sub2api_client.py
 └── test_runtime_helpers.py
 ```
 
 ## 验证命令
 
 ```bash
-python -m unittest test_browser_automation_helpers.py test_cloudmail_client.py test_runtime_helpers.py
+python -m unittest test_browser_automation_helpers.py test_cloudmail_client.py test_sub2api_client.py test_runtime_helpers.py
 ```
 
 ## 友情链接

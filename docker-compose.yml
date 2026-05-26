@@ -1,0 +1,25 @@
+services:
+  cdk-plus:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: keytoauth-cdk-plus:latest
+    container_name: keytoauth-cdk-plus
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      CDK_PLUS_ADMIN_PASSWORD: "${CDK_PLUS_ADMIN_PASSWORD:?Set CDK_PLUS_ADMIN_PASSWORD before starting}"
+      CDK_PLUS_DB_PATH: /app/data/cdk_plus.sqlite3
+      CDK_PLUS_CLOUDMAIL_CONFIG: /app/config/cloudmail.config.json
+    volumes:
+      - cdk_plus_data:/app/data
+      - type: bind
+        source: ./cloudmail.config.json
+        target: /app/config/cloudmail.config.json
+        read_only: true
+        bind:
+          create_host_path: false
+
+volumes:
+  cdk_plus_data:

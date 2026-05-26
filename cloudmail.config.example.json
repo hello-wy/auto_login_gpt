@@ -1,0 +1,6 @@
+{
+  "api_base_url": "https://edu.arrangework.dpdns.org",
+  "admin_email": "admin@edu.arrangework.dpdns.org",
+  "admin_password": "<CLOUDMAIL_ADMIN_PASSWORD>",
+  "domain": "edu.arrangework.dpdns.org"
+}

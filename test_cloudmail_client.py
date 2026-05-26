@@ -5,6 +5,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from cloudmail_client import (
+    CloudMailBusinessError,
     CloudMailClient,
     extract_verification_code,
     load_cloudmail_config,
@@ -138,6 +139,82 @@ class CloudMailClientTests(unittest.TestCase):
         self.assertEqual(mock_post.call_args_list[1].args[0], "https://edu.arrangework.dpdns.org/api/public/emailList")
         self.assertEqual(mock_post.call_args_list[1].kwargs["headers"]["Authorization"], "token-1")
         self.assertEqual(mock_post.call_args_list[1].kwargs["json"]["toEmail"], "user@edu.arrangework.dpdns.org")
+
+    @patch("cloudmail_client.requests.post")
+    def test_fetch_verification_code_refreshes_expired_token_once(self, mock_post):
+        mock_post.side_effect = [
+            make_response({"code": 200, "data": {"token": "expired-token"}}),
+            make_response({"code": 401, "message": "token验证失败"}),
+            make_response({"code": 200, "data": {"token": "fresh-token"}}),
+            make_response(
+                {
+                    "code": 200,
+                    "data": {
+                        "list": [
+                            {
+                                "toEmail": "user@edu.arrangework.dpdns.org",
+                                "subject": "OpenAI code",
+                                "content": "Your code is 135790",
+                            }
+                        ]
+                    },
+                }
+            ),
+        ]
+        config = load_cloudmail_config(
+            {
+                "api_base_url": "https://edu.arrangework.dpdns.org",
+                "admin_email": "admin@edu.arrangework.dpdns.org",
+                "admin_password": "secret",
+                "domain": "edu.arrangework.dpdns.org",
+            }
+        )
+        client = CloudMailClient(config, sleep=lambda _seconds: None)
+
+        code = client.fetch_verification_code("user@edu.arrangework.dpdns.org", max_attempts=1)
+
+        self.assertEqual(code, "135790")
+        self.assertEqual(mock_post.call_args_list[1].kwargs["headers"]["Authorization"], "expired-token")
+        self.assertEqual(mock_post.call_args_list[3].kwargs["headers"]["Authorization"], "fresh-token")
+
+    @patch("cloudmail_client.requests.post")
+    def test_fetch_verification_code_returns_empty_when_no_code_arrives(self, mock_post):
+        mock_post.side_effect = [
+            make_response({"code": 200, "data": {"token": "token-1"}}),
+            make_response({"code": 200, "data": {"list": []}}),
+        ]
+        config = load_cloudmail_config(
+            {
+                "api_base_url": "https://edu.arrangework.dpdns.org",
+                "admin_email": "admin@edu.arrangework.dpdns.org",
+                "admin_password": "secret",
+                "domain": "edu.arrangework.dpdns.org",
+            }
+        )
+        client = CloudMailClient(config, sleep=lambda _seconds: None)
+
+        code = client.fetch_verification_code("user@edu.arrangework.dpdns.org", max_attempts=1)
+
+        self.assertEqual(code, "")
+
+    @patch("cloudmail_client.requests.post")
+    def test_fetch_verification_code_surfaces_cloudmail_business_error(self, mock_post):
+        mock_post.side_effect = [
+            make_response({"code": 200, "data": {"token": "token-1"}}),
+            make_response({"code": 500, "message": "CloudMail config rejected"}),
+        ]
+        config = load_cloudmail_config(
+            {
+                "api_base_url": "https://edu.arrangework.dpdns.org",
+                "admin_email": "admin@edu.arrangework.dpdns.org",
+                "admin_password": "secret",
+                "domain": "edu.arrangework.dpdns.org",
+            }
+        )
+        client = CloudMailClient(config, sleep=lambda _seconds: None)
+
+        with self.assertRaisesRegex(CloudMailBusinessError, "CloudMail config rejected"):
+            client.fetch_verification_code("user@edu.arrangework.dpdns.org", max_attempts=1)
 
     def test_normalize_cloudmail_base_url_rejects_invalid_values(self):
         self.assertEqual(normalize_cloudmail_base_url("not a url with spaces"), "")

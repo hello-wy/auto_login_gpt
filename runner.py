@@ -20,7 +20,8 @@ from config import (
     LOG_DIR,
     OUTPUT_DIR,
 )
-from session_converter import convert_to_cpa, convert_to_sub2api, to_email_key
+from session_converter import convert_to_cpa, to_email_key
+from sub2api_client import import_chatgpt_session
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -151,21 +152,18 @@ def process_email_accounts(emails: List[str], options: dict) -> None:
     log_dir = resolve_project_path(LOG_DIR)
     log_path, log_handle, original_stdout, original_stderr = configure_run_logging(log_dir)
     console = Console(file=sys.stdout)
+    context = {"options": options, "log_path": log_path, "log_handle": log_handle, "console": console}
     try:
-        run_accounts_with_logging(emails, options, log_path, log_handle, console)
+        run_accounts_with_logging(emails, context)
     finally:
         restore_run_logging(log_handle, original_stdout, original_stderr)
 
 
-def run_accounts_with_logging(
-    emails: List[str],
-    options: dict,
-    log_path: str,
-    log_handle,
-    console: Console,
-) -> None:
+def run_accounts_with_logging(emails: List[str], context: dict) -> None:
+    options = context["options"]
+    console = context["console"]
     console.print(f"\n[bold cyan]Processing {len(emails)} email account(s)...[/bold cyan]\n")
-    console.print(f"[dim]Run log: {log_path}[/dim]")
+    console.print(f"[dim]Run log: {context['log_path']}[/dim]")
     console.print("[yellow]Step 1: Loading CloudMail config...[/yellow]")
     cloudmail_client = create_cloudmail_client(options.get("cloudmail_config_path", CLOUDMAIL_CONFIG_PATH))
     console.print(f"[green]✓ Loaded CloudMail config for {cloudmail_client.config.domain}[/green]\n")
@@ -173,49 +171,49 @@ def run_accounts_with_logging(
     if not items:
         console.print("[yellow]No accounts left after CPA active-email filtering. Exiting.[/yellow]")
         return
-    summary = process_account_items(items, options, cloudmail_client, log_path, log_handle, console)
-    print_summary(summary, skipped_count, log_path, console)
+    summary = process_account_items(items, {**context, "cloudmail_client": cloudmail_client})
+    print_summary(summary, {**context, "skipped_count": skipped_count})
 
 
-def process_account_items(
-    items: List[dict],
-    options: dict,
-    cloudmail_client: CloudMailClient,
-    log_path: str,
-    log_handle,
-    console: Console,
-) -> dict:
+def process_account_items(items: List[dict], context: dict) -> dict:
+    console = context["console"]
     output_dir = resolve_project_path(OUTPUT_DIR)
     os.makedirs(output_dir, exist_ok=True)
     summary = {"total": len(items), "success": 0, "fail": 0, "output_dir": output_dir}
-    with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"), BarColumn(), console=console) as progress:
+    account_context = {**context, "summary": summary}
+    progress_columns = (SpinnerColumn(), TextColumn("[progress.description]{task.description}"), BarColumn())
+    with Progress(*progress_columns, console=console) as progress:
         task = progress.add_task("[cyan]Processing accounts...", total=len(items))
         for index, item in enumerate(items):
-            handle_account(index, item, options, cloudmail_client, summary, log_path, log_handle, console)
+            handle_account(index, item, account_context)
             progress.update(task, advance=1)
     return summary
 
 
-def handle_account(index: int, item: dict, options: dict, cloudmail_client: CloudMailClient, summary: dict, log_path: str, log_handle, console: Console) -> None:
+def handle_account(index: int, item: dict, context: dict) -> None:
+    summary = context["summary"]
+    console = context["console"]
     email = item.get("email")
     console.print(f"\n[bold]Account {index + 1}/{summary['total']}: {email}[/bold]")
     try:
         if not email:
             raise ValueError("Account item is missing email")
-        session = login_account(email, options, cloudmail_client, console)
-        save_session_outputs(email, session, options.get("output_format", "both"), summary["output_dir"], console)
+        session = login_account(email, context)
+        save_session_outputs(email, session, context)
         summary["success"] += 1
         console.print(f"[bold green]✓ Account {index + 1} completed successfully[/bold green]")
     except Exception as error:
         summary["fail"] += 1
-        log_handle.write(f"\n=== Account {index + 1} failure traceback ===\n")
-        traceback.print_exc(file=log_handle)
-        log_handle.flush()
+        context["log_handle"].write(f"\n=== Account {index + 1} failure traceback ===\n")
+        traceback.print_exc(file=context["log_handle"])
+        context["log_handle"].flush()
         console.print(f"[bold red]✗ Account {index + 1} failed: {error}[/bold red]")
-        console.print(f"[dim]See run log: {log_path}[/dim]")
+        console.print(f"[dim]See run log: {context['log_path']}[/dim]")
 
 
-def login_account(email: str, options: dict, cloudmail_client: CloudMailClient, console: Console) -> dict:
+def login_account(email: str, context: dict) -> dict:
+    options = context["options"]
+    console = context["console"]
     console.print("[yellow]→ Logging in to ChatGPT...[/yellow]")
     profile_root = resolve_project_path(BROWSER_PROFILE_DIR)
     profile_dir = os.path.join(profile_root, to_email_key(email))
@@ -224,7 +222,7 @@ def login_account(email: str, options: dict, cloudmail_client: CloudMailClient, 
         None,
         profile_dir,
         options.get("headless", False),
-        cloudmail_client,
+        context["cloudmail_client"],
         options.get("proxy"),
         options.get("flaresolverr_url", FLARESOLVERR_URL),
     )
@@ -233,26 +231,32 @@ def login_account(email: str, options: dict, cloudmail_client: CloudMailClient, 
     return session
 
 
-def save_session_outputs(email: str, session: dict, output_format: str, output_dir: str, console: Console) -> None:
+def save_session_outputs(email: str, session: dict, context: dict) -> None:
+    options = context["options"]
+    console = context["console"]
+    output_format = options.get("output_format", "sub2api")
     email_key = to_email_key(email)
     if output_format in ["cpa", "both"]:
-        cpa_path = os.path.join(output_dir, f"{email_key}_cpa.json")
+        cpa_path = os.path.join(context["summary"]["output_dir"], f"{email_key}_cpa.json")
         save_json_output(cpa_path, convert_to_cpa(session), "CPA output")
         console.print(f"[green]✓ Saved CPA: {cpa_path}[/green]")
     if output_format in ["sub2api", "both"]:
-        sub2api_path = os.path.join(output_dir, f"{email_key}_sub2api.json")
-        save_json_output(sub2api_path, convert_to_sub2api(session), "Sub2API output")
-        console.print(f"[green]✓ Saved Sub2API: {sub2api_path}[/green]")
+        result = import_chatgpt_session(session, options.get("sub2api", {}))
+        console.print(
+            "[green]✓ Imported Sub2API: "
+            f"created {result['created']}, updated {result['updated']}[/green]"
+        )
 
 
-def print_summary(summary: dict, skipped_count: int, log_path: str, console: Console) -> None:
+def print_summary(summary: dict, context: dict) -> None:
+    console = context["console"]
     console.print(f"\n[bold cyan]{'='*60}[/bold cyan]")
     console.print("[bold]Summary:[/bold]")
     console.print(f"  Total: {summary['total']}")
-    if skipped_count:
-        console.print(f"  [yellow]↷ Skipped by CPA filter: {skipped_count}[/yellow]")
+    if context["skipped_count"]:
+        console.print(f"  [yellow]↷ Skipped by CPA filter: {context['skipped_count']}[/yellow]")
     console.print(f"  [green]✓ Successful: {summary['success']}[/green]")
     console.print(f"  [red]✗ Failed: {summary['fail']}[/red]")
     console.print(f"  Output directory: {summary['output_dir']}")
-    console.print(f"  Run log: {log_path}")
+    console.print(f"  Run log: {context['log_path']}")
     console.print(f"[bold cyan]{'='*60}[/bold cyan]\n")

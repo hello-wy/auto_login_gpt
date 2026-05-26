@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CDK Plus Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body class="min-h-screen bg-slate-100 text-slate-950 antialiased">
+    <main class="mx-auto w-full max-w-6xl px-4 py-6 sm:py-10">
+      <section class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-xl shadow-slate-200/70">
+        <header class="flex flex-col gap-3 border-b border-slate-200 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7">
+          <div>
+            <h1 class="text-2xl font-bold tracking-normal text-slate-950">CDK 管理</h1>
+            <p class="mt-1 text-sm text-slate-500">新增、删除并分页查看所有邮箱 CDK</p>
+          </div>
+          <a class="text-sm font-semibold text-blue-600 hover:text-blue-700" href="/">用户查询页</a>
+        </header>
+
+        <div id="loginPanel" class="grid gap-4 px-5 py-6 sm:px-7">
+          <form id="loginForm" class="mx-auto grid w-full max-w-md gap-4 rounded-lg border border-slate-200 bg-slate-50/80 p-5">
+            <div>
+              <h2 class="text-lg font-bold text-slate-950">管理员登录</h2>
+              <p class="mt-1 text-sm text-slate-500">请输入管理密码后进入 CDK 管理界面</p>
+            </div>
+            <label class="grid gap-2 text-sm font-semibold text-slate-700">
+              管理密码
+              <input
+                id="passwordInput"
+                class="min-h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                autocomplete="current-password"
+                placeholder="请输入管理密码"
+                type="password"
+                required
+              />
+            </label>
+            <button
+              id="loginButton"
+              class="inline-flex min-h-11 items-center justify-center rounded-lg bg-blue-600 px-5 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:cursor-wait disabled:opacity-70"
+              type="submit"
+            >
+              进入管理界面
+            </button>
+          </form>
+        </div>
+
+        <div id="adminPanel" class="hidden grid gap-6 px-5 py-6 sm:px-7">
+          <form id="createForm" class="grid gap-4 rounded-lg border border-slate-200 bg-slate-50/80 p-4">
+            <label class="grid gap-2 text-sm font-semibold text-slate-700">
+              邮箱地址
+              <textarea
+                id="emailInput"
+                class="min-h-24 resize-y rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                placeholder="user@example.com&#10;user2@example.com"
+                required
+              ></textarea>
+            </label>
+            <div class="grid gap-4 md:grid-cols-[10rem_minmax(0,1fr)_8rem] md:items-end md:gap-12">
+              <label class="grid gap-2 text-sm font-semibold text-slate-700">
+                有效天数
+                <input
+                  id="daysInput"
+                  class="min-h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                  min="1"
+                  step="1"
+                  type="number"
+                  value="7"
+                  required
+                />
+              </label>
+              <label class="grid gap-2 text-sm font-semibold text-slate-700">
+                指定 CDK
+                <input
+                  id="cdkInput"
+                  class="min-h-11 rounded-lg border border-slate-300 bg-white px-3 font-mono text-sm font-medium outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                  placeholder="留空随机生成"
+                />
+              </label>
+              <button
+                id="createButton"
+                class="inline-flex min-h-11 items-center justify-center rounded-lg bg-blue-600 px-5 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:cursor-wait disabled:opacity-70 md:ml-4"
+                type="submit"
+              >
+                新增
+              </button>
+            </div>
+          </form>
+
+          <p id="message" class="min-h-5 text-sm text-slate-500"></p>
+
+          <section class="overflow-hidden rounded-lg border border-slate-200">
+            <div class="flex flex-col gap-3 border-b border-slate-200 bg-white px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 class="text-base font-bold text-slate-900">账号 CDK</h2>
+                <p id="totalText" class="mt-1 text-sm text-slate-500">加载中</p>
+              </div>
+              <button
+                id="reloadButton"
+                class="inline-flex min-h-10 items-center justify-center rounded-lg bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-700 focus:outline-none focus:ring-4 focus:ring-slate-200"
+                type="button"
+              >
+                刷新列表
+              </button>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="min-w-full divide-y divide-slate-200 text-left text-sm">
+                <thead class="bg-slate-50 text-xs font-bold uppercase tracking-wide text-slate-500">
+                  <tr>
+                    <th class="px-4 py-3">CDK</th>
+                    <th class="px-4 py-3">邮箱</th>
+                    <th class="px-4 py-3">有效天数</th>
+                    <th class="px-4 py-3">创建时间</th>
+                    <th class="px-4 py-3">过期时间</th>
+                    <th class="px-4 py-3 text-right">操作</th>
+                  </tr>
+                </thead>
+                <tbody id="tableBody" class="divide-y divide-slate-100 bg-white"></tbody>
+              </table>
+            </div>
+
+            <div class="flex flex-col gap-3 border-t border-slate-200 bg-slate-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <span id="pageText" class="text-sm font-medium text-slate-600">第 1 页</span>
+              <div class="flex gap-2">
+                <button id="prevButton" class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50" type="button">上一页</button>
+                <button id="nextButton" class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50" type="button">下一页</button>
+              </div>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <div id="switchModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/40 px-4">
+      <section class="w-full max-w-md rounded-lg border border-slate-200 bg-white p-5 shadow-2xl shadow-slate-950/20">
+        <div class="grid gap-2">
+          <h2 class="text-lg font-bold text-slate-950">切换邮箱</h2>
+          <p class="text-sm leading-6 text-slate-600">
+            确认后会把当前 CDK 切换为最早创建且未激活的邮箱，并删除那条来源记录。
+          </p>
+          <p id="switchModalCdk" class="break-all rounded-lg bg-slate-50 px-3 py-2 font-mono text-sm font-semibold text-slate-700"></p>
+        </div>
+        <div class="mt-5 flex justify-end gap-2">
+          <button
+            id="switchCancelButton"
+            class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+            type="button"
+          >
+            取消
+          </button>
+          <button
+            id="switchConfirmButton"
+            class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-wait disabled:opacity-70"
+            type="button"
+          >
+            确认切换
+          </button>
+        </div>
+      </section>
+    </div>
+
+    <script src="/static/admin_create.js"></script>
+    <script src="/static/admin.js"></script>
+  </body>
+</html>

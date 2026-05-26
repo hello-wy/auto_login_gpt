@@ -26,6 +26,15 @@ OUTPUT_DIR = "./output"
 LOG_DIR = "./logs"
 DIAGNOSTICS_DIR = "./artifacts"
 CLOUDMAIL_CONFIG_PATH = "./cloudmail.config.json"
+SUB2API_BASE_URL = "https://solidapi.top/"
+SUB2API_ACCOUNTS_URL = (
+    "https://solidapi.top/api/v1/admin/accounts"
+    "?page=1&page_size=50&platform=&type=&status=&privacy_mode=&group=&search="
+    "&sort_by=status&sort_order=asc&timezone=Asia%2FShanghai"
+)
+SUB2API_ERROR_EMAIL_OUTPUT_PATH = "./sub2api_error_accounts.txt"
+SUB2API_GROUP_NAME = "vip"
+SUB2API_ACCOUNT_PRIORITY = 1
 PROXY = None  # Browser proxy, e.g., "socks5://127.0.0.1:1080"
 FLARESOLVERR_URL = "http://127.0.0.1:8191/v1"
 FLARESOLVERR_MAX_TIMEOUT = 60000

@@ -55,6 +55,7 @@ Thumbs.db
 
 # Local inputs / debug artifacts
 keys.txt
+sub2api_error_accounts.txt
 cloudmail.config.json
 debug_*.py
 .ace-tool/
@@ -66,3 +67,7 @@ debug_*.py
 !test_browser_automation_helpers.py
 !keys.example.txt
 !cloudmail.config.example.json
+
+# CDK Plus local runtime state
+cdk_plus/*.sqlite3
+cdk_plus/cloudmail.config.json
